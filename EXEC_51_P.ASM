@@ -14,7 +14,7 @@ CODE SEGMENT USE16
             LEA    BX,BUF
             MOV    CX,LEN               ;长度
             MOV    DL,0                 ;数字个数
-      JUDGE:MOV    AL,[BX+SI]           ;判断是否为数字
+      JUDGE:MOV    AL,[BX+SI]           ;判断是否为数字。此处不用PTR，因为AL类型确定，[BX+SI]不确定，有一确定即可
             CMP    AL,30H               ;小于‘0’，跳过
             JC     NEXT
             CMP    AL,39H               ;大于‘9’，跳过
