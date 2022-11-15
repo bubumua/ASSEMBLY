@@ -14,7 +14,7 @@ CODE SEGMENT USE16
           ADD    DL,30H
           MOV    AH,2
           INT    21H
-          LOOP   AGA                ;结果为321 —— 说明先判断CX>0，若真，则DEC CX，然后跳转；若假，跳出循环
+          LOOP   AGA
           MOV    AH,4CH
           INT    21H
 CODE ENDS
