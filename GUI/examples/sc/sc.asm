@@ -1,20 +1,22 @@
 .386
 .model flat,stdcall
 option casemap:none
-include \masm32\include\windows.inc
-include \masm32\include\user32.inc
-includelib \masm32\lib\user32.lib            ; calls to functions in user32.lib and kernel32.lib
-include \masm32\include\kernel32.inc
-includelib \masm32\lib\kernel32.lib
+include \masm32\include\masm32rt.inc
+; include \masm32\include\windows.inc
+; include \masm32\include\user32.inc
+; includelib \masm32\lib\user32.lib            
+; include \masm32\include\kernel32.inc
+; includelib \masm32\lib\kernel32.lib
+include "res.h"
 
 WinMain proto :DWORD,:DWORD,:DWORD,:DWORD
 
-.DATA                                                     ; initialized data
-        ClassName db          "SimpleWinClass",0          ; the name of our window class
-        AppName   db          "Our First Window",0        ; the name of our window
+.DATA                                                   ; initialized data
+        ClassName db          "SimpleWinClass",0        ; the name of our window class
+        AppName   db          "First Window",0          ; the name of our window
 
-.DATA?                                                    ; Uninitialized data
-                  hInstance   HINSTANCE ?                 ; Instance handle of our program
+.DATA?                                                  ; Uninitialized data
+                  hInstance   HINSTANCE ?               ; Instance handle of our program
                   CommandLine LPSTR ?
 .CODE                                                                             ; Here begins our code
         start:  
@@ -61,8 +63,8 @@ NULL,\
 hInst,\
                 NULL
                 mov    hwnd,eax
-                invoke ShowWindow, hwnd,CmdShow                                   ; display our window on desktop
-                invoke UpdateWindow, hwnd                                         ; refresh the client area
+                invoke ShowWindow, hwnd, CmdShow                                  ; display our window on desktop
+                invoke UpdateWindow, hwnd                                         ; refresh the client area, just a demonstration, actually unnessary
 
 .WHILE TRUE                                                                       ; Enter message loop
                 invoke GetMessage, ADDR msg,NULL,0,0
@@ -70,13 +72,29 @@ hInst,\
                 invoke TranslateMessage, ADDR msg
                 invoke DispatchMessage, ADDR msg
 .ENDW
-                mov    eax,msg.wParam              ; return exit code in eax
+                mov    eax,msg.wParam                                                      ; return exit code in eax
                 ret
 WinMain endp
 
 WndProc proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM
-.IF uMsg==WM_DESTROY                               ; if the user closes our window
-                invoke PostQuitMessage,NULL        ; quit our application
+                local  hdc:dword
+                local  brush:dword
+                local  ps:PAINTSTRUCT
+        
+.IF uMsg==WM_DESTROY                                                                       ; if the user closes our window
+                invoke PostQuitMessage,NULL                                                ; quit our application
+.elseif uMsg == WM_PAINT
+                invoke CreateSolidBrush, 0ffh                                              ;create red brush
+                mov    brush, eax
+                invoke BeginPaint, hWnd, addr ps
+                mov    hdc, eax
+
+                invoke FillRect, hdc, addr ps.rcPaint, brush
+
+                invoke EndPaint, hWnd, addr ps
+                invoke DeleteObject, brush
+.elseif uMsg == WM_LBUTTONDOWN
+                invoke MessageBox,hWnd,addr ClassName,0,MB_OK or MB_ICONINFORMATION
 .ELSE
              invoke DefWindowProc,hWnd,uMsg,wParam,lParam        ; Default message processing
              ret
