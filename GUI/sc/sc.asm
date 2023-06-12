@@ -1,7 +1,11 @@
 .586
 .model flat,stdcall
 option casemap:none
+
 include \masm32\include\masm32rt.inc
+include \masm32\include\winmm.inc
+
+includelib \masm32\lib\winmm.lib
 
 ; porcedure pre-statement
 WinMain proto :DWORD,:DWORD,:DWORD,:DWORD
@@ -9,10 +13,10 @@ InitMap proto
 
 ; global initialized data
 .DATA                                                         
-        ; the name of our window class
+        ; the name of window class
         ClassName        db           "SimpleWinClass",0   
-        ; the name of our window      
-        AppName          db           "First Window",0    
+        ; the title of window      
+        AppName          db           "Gluttonous Snake",0    
         ; for DEBUG       
         IconErr          db           "Icon Error",0
         fmt              db           "%d,%d,%d,%d", 0
@@ -20,10 +24,20 @@ InitMap proto
         snakeMsg         db           "%d,%d,%d,%d", 0
         SnCrM            db           "snakeCrashMsg",0
         snakeCrashMsg    db           "edi=%d,esi=%d,edioc=%d,esioc=%d", 0
+        ; GAME text
+        GameOverTitle    db           "Game Over",0
+        SnakeAchievement db           "Snake Length: %d, Your Score: %d",0
+        SnakeLength      db           "Snake Length: %d ",0
+        SnakeScore       db           "Score: %d ",0
+        TitleAbout       db           "About",0
+        TextAbout        db           "You are right. However, Snake is a classic game that was developed in 1976 at Bell Labs and has become a popular casual game.",0
+        TitleControl     db           "HOW TO PLAY",0
+        TextControl      db           "Press the SPACE to start/pause the game and use WASD to control the snake's movement.",0
+
         ; output buffer
         szBuffer         db           256 dup(0)
         ; define window size
-        WND_WIDTH        equ          750
+        WND_WIDTH        equ          800
         WND_HEIGHT       equ          750
         ; define block size 
         ICON_WIDTH       equ          32
@@ -42,7 +56,14 @@ InitMap proto
         IDM_START        equ          211
         IDM_STOP         equ          212
         IDM_QUIT         equ          213
+        IDM_CTRL         equ          221
+        IDM_ABOUT        equ          222
         IDA_ACCELERATOR1 equ          300
+        ; define music about
+        Mp3DeviceID      dd           0
+        PlayFlag         dd           0
+        Mp3Device        db           "MPEGVideo",0     ; play .mp3, so use MPEGVideo
+        MUSIC_TOUSHIGE   db           "toushige.mp3",0
         
         ; orientation meaning:
         ; 0:no orientation
@@ -81,7 +102,7 @@ InitMap proto
         ;define game area size 
         MAXROW   equ     20
         MAXCOL   equ     20
-        MAPSIZE  equ      400
+        MAPSIZE  equ     400
         mapInY   db      400 dup(0)     
         mapInX   db      400 dup(0)     
         mapOutY  db      400 dup(0)     
@@ -120,6 +141,8 @@ InitMap proto
         hIcon_right  HICON      ?
         hIcon_left   HICON      ?
         hIcon_up     HICON      ?
+        ; music handle
+        hMusic_toushige DWORD   ?
                   
 .CODE
 start:  
@@ -158,7 +181,27 @@ start:
 ; quit program. The exit code is returned in eax from WinMain.
         invoke ExitProcess, eax
 
+; play music
+PlayMp3File proc hWin:DWORD,NameOfFile:DWORD
+      LOCAL mciOpenParms:MCI_OPEN_PARMS
+      LOCAL mciPlayParms:MCI_PLAY_PARMS
 
+            mov eax,hWin        
+            mov mciPlayParms.dwCallback,eax
+
+            mov eax, OFFSET Mp3Device
+            mov mciOpenParms.lpstrDeviceType,eax
+
+            mov eax,NameOfFile
+            mov mciOpenParms.lpstrElementName,eax
+
+            invoke mciSendCommand,0,MCI_OPEN, MCI_OPEN_TYPE or MCI_OPEN_ELEMENT,ADDR mciOpenParms
+            mov eax,mciOpenParms.wDeviceID
+            mov Mp3DeviceID,eax
+
+            invoke mciSendCommand,Mp3DeviceID,MCI_PLAY,MCI_NOTIFY,ADDR mciPlayParms
+            ret  
+PlayMp3File endp
 ; With Row and Col, return linear index in gameMap
 GetIndex proc uses edi row:byte, col:byte
 ; calculate block offset in ebx
@@ -202,6 +245,8 @@ InitSnake proc
         mov mySnake.x,4
         mov mySnake.y,5
         mov mySnake.orientation,RIGHT
+        mov mySnake.len,4
+        mov mySnake.score,0
         invoke GetIndex,5,4
         mov edi,eax
         mov mapOcpy[edi],SNAKE_HEAD
@@ -487,6 +532,9 @@ getCurIndex:
         mov eax,mySnake.score
         add eax, FOODVALUE
         mov mySnake.score,eax
+        mov eax,mySnake.len
+        inc eax
+        mov mySnake.len,eax
         mov foodExist,0
         mov mySnake.satisfied,1
 snakeMove:
@@ -559,13 +607,15 @@ nextBody:
         jmp getCurIndex
 ; snake crashes
 crash:
-        ; TODO
-        ; push eax
-        ; movzx ebx,ah
-        ; movzx eax,al
-        ; Invoke wsprintf, Addr szBuffer, Addr snakeCrashMsg, edi,esi,ebx,eax
-        ; invoke MessageBox, hWnd, addr szBuffer, addr SnCrM, MB_OK
-        ; pop eax
+        mov gameIsRunning,0
+        push eax
+        movzx ebx,ah
+        movzx eax,al
+        invoke wsprintf, Addr szBuffer, Addr SnakeAchievement, mySnake.len, mySnake.score
+        invoke MessageBox, hWnd, addr szBuffer, addr GameOverTitle, MB_OK
+        pop eax
+        invoke InitMap
+        jmp endUpdateMapDate
 createFoodOrNot:
         cmp foodExist,1
         jz endUpdateMapDate
@@ -583,15 +633,21 @@ HandleKeydown proc uses edi hWnd:HWND, msg:UINT, wParam:WPARAM, lParam:LPARAM, h
         mov eax, wParam
         .if eax == VK_SPACE
                 cmp gameIsRunning,0
-                jz zeroSet
+                jz setRunning
                 mov gameIsRunning,0
-                jmp setZero
-                zeroSet:
+                ; stop music
+                invoke mciSendCommand,Mp3DeviceID,MCI_CLOSE,0,0
+                jmp zeroSet
+        setRunning:
                 mov gameIsRunning,1
-                setZero:
+                ; play music
+                invoke PlayMp3File, hWnd, addr MUSIC_TOUSHIGE
+                zeroSet:
         ; key W
-        .elseif eax == 87
+        .elseif (eax == 87 || eax == VK_UP)
                 cmp snakeCanSwerve,0
+                jz endHandleKeydown
+                cmp gameIsRunning,0
                 jz endHandleKeydown
         ; you can not go back
                 invoke GetIndex,mySnake.y,mySnake.x
@@ -609,8 +665,10 @@ HandleKeydown proc uses edi hWnd:HWND, msg:UINT, wParam:WPARAM, lParam:LPARAM, h
                 mov mySnake.orientation,UP
                 invoke InvalidateRect, hWnd, NULL, TRUE
         ; key A
-        .elseif eax == 65
+        .elseif (eax == 65 || eax == VK_LEFT)
                 cmp snakeCanSwerve,0
+                jz endHandleKeydown
+                cmp gameIsRunning,0
                 jz endHandleKeydown
         ; you can not go back
                 invoke GetIndex,mySnake.y,mySnake.x
@@ -628,8 +686,10 @@ HandleKeydown proc uses edi hWnd:HWND, msg:UINT, wParam:WPARAM, lParam:LPARAM, h
                 mov mySnake.orientation,LEFT
                 invoke InvalidateRect, hWnd, NULL, TRUE
         ; key S
-        .elseif eax == 83
+        .elseif (eax == 83 || eax == VK_DOWN)
                 cmp snakeCanSwerve,0
+                jz endHandleKeydown
+                cmp gameIsRunning,0
                 jz endHandleKeydown
         ; you can not go back
                 invoke GetIndex,mySnake.y,mySnake.x
@@ -647,8 +707,10 @@ HandleKeydown proc uses edi hWnd:HWND, msg:UINT, wParam:WPARAM, lParam:LPARAM, h
                 mov mySnake.orientation,DOWN
                 invoke InvalidateRect, hWnd, NULL, TRUE
         ; key D
-        .elseif eax == 68
+        .elseif (eax == 68 || eax == VK_RIGHT)
                 cmp snakeCanSwerve,0
+                jz endHandleKeydown
+                cmp gameIsRunning,0
                 jz endHandleKeydown
         ; you can not go back
                 invoke GetIndex,mySnake.y,mySnake.x
@@ -688,11 +750,28 @@ WndProc proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM
         local rect1:RECT
 
         .IF uMsg == WM_COMMAND
-                ; TODO
-                invoke MessageBox,hWnd,addr ClassName,0,MB_OK or MB_ICONINFORMATION
+                mov eax, wParam
+                .if ax==IDM_ABOUT
+                        mov gameIsRunning,0
+                        invoke MessageBox,hWnd,addr TextAbout,addr TitleAbout,MB_OK or MB_ICONINFORMATION
+                .elseif ax==IDM_CTRL
+                        mov gameIsRunning,0
+                        invoke MessageBox,hWnd,addr TextControl,addr TitleControl,MB_OK or MB_ICONINFORMATION
+                .elseif ax==IDM_START
+                        mov gameIsRunning,1
+                        ; play music
+                        invoke PlayMp3File, hWnd, addr MUSIC_TOUSHIGE
+                .elseif ax==IDM_STOP
+                        mov gameIsRunning,0
+                        ; stop music
+                        invoke mciSendCommand,Mp3DeviceID,MCI_CLOSE,0,0
+                .elseif ax==IDM_QUIT
+                        invoke PostQuitMessage,NULL
+                .endif
+                
 
         .elseif uMsg == WM_PAINT
-                invoke        BeginPaint, hWnd, addr @ps
+                invoke BeginPaint, hWnd, addr @ps
                 mov           @hdc, eax
         
                 ;draw red background
@@ -701,20 +780,31 @@ WndProc proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM
                 ; invoke FillRect, @hdc, addr @ps.rcPaint, @brush
                 ; invoke DeleteObject, @brush
 
-        ; draw one line words
-                invoke        GetClientRect, hWnd, addr rect
+        ; draw text
+                invoke GetClientRect, hWnd, addr rect
         ; Calculate the client area of ​​the window
-                invoke        AdjustWindowRect, addr rect, WS_OVERLAPPEDWINDOW, FALSE
-                invoke        DrawText, @hdc, addr AppName, -1, addr rect, DT_SINGLELINE OR DT_CENTER OR DT_VCENTER
+                ; invoke AdjustWindowRect, addr rect, WS_OVERLAPPEDWINDOW, FALSE
+                invoke wsprintf, Addr szBuffer, Addr SnakeScore, mySnake.score
+                invoke DrawText, @hdc, addr szBuffer, -1, addr rect, DT_SINGLELINE OR DT_RIGHT OR DT_VCENTER
+                mov eax,rect.top
+                add eax,30
+                mov rect.top,eax
+                invoke wsprintf, Addr szBuffer, Addr SnakeLength, mySnake.len
+                invoke DrawText, @hdc, addr szBuffer, -1, addr rect, DT_SINGLELINE OR DT_RIGHT OR DT_VCENTER
+                mov eax,rect.top
+                sub eax,30
+                mov rect.top,eax
         ; repaint game area
-                invoke        DrawMap, @hdc, hWnd
+                invoke DrawMap, @hdc, hWnd
         ; end paint
-                invoke        EndPaint, hWnd, addr @ps
+                invoke EndPaint, hWnd, addr @ps
         .elseif uMsg == WM_TIMER
-                invoke        UpdateMapData, hWnd
-                invoke        InvalidateRect, hWnd, NULL, TRUE
+                invoke UpdateMapData, hWnd
+                invoke InvalidateRect, hWnd, NULL, TRUE
         .elseif uMsg == WM_KEYDOWN
                 invoke HandleKeydown, hWnd, uMsg, wParam, lParam, @hdc
+        .elseif uMsg == MM_MCINOTIFY
+                invoke PlayMp3File, hWnd, addr MUSIC_TOUSHIGE
         .elseif uMsg == WM_LBUTTONDOWN
                 ; invoke        MessageBox,hWnd,addr ClassName,0,MB_OK or MB_ICONINFORMATION
         .elseif uMsg==WM_DESTROY
