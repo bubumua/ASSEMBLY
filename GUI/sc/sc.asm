@@ -114,7 +114,7 @@ InitMap proto
         foodExist       db      0
         randSeed        DWORD   0
                 
-        ; define block in map
+        ; define block in map, a pity that i don't know how to use struct :C
         ; GBlock struct
         ;         mvInX      byte  0
         ;         mvInY   byte    0
@@ -141,8 +141,6 @@ InitMap proto
         hIcon_right  HICON      ?
         hIcon_left   HICON      ?
         hIcon_up     HICON      ?
-        ; music handle
-        hMusic_toushige DWORD   ?
                   
 .CODE
 start:  
@@ -202,6 +200,7 @@ PlayMp3File proc hWin:DWORD,NameOfFile:DWORD
             invoke mciSendCommand,Mp3DeviceID,MCI_PLAY,MCI_NOTIFY,ADDR mciPlayParms
             ret  
 PlayMp3File endp
+
 ; With Row and Col, return linear index in gameMap
 GetIndex proc uses edi row:byte, col:byte
 ; calculate block offset in ebx
@@ -453,9 +452,6 @@ DrawMap proc hdc:DWORD,hWnd:HWND
                 .elseif (al==SNAKE)
                         invoke DrawIcon, hdc, @xp, @yp, hIcon_green
                 .elseif (al==SNAKE_HEAD)
-                        ; TODO test mySnake position
-                        ; invoke wsprintf, Addr szBuffer, Addr fmt,mySnake.orientation,hIcon_green
-                        ; invoke MessageBox, hWnd, addr szBuffer, NULL, MB_OK or MB_ICONASTERISK
                         .if mySnake.orientation==RIGHT
                                 invoke DrawIcon, hdc, @xp, @yp, hIcon_right
                         .elseif mySnake.orientation==UP
