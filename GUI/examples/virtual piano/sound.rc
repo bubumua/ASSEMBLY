@@ -1,0 +1,126 @@
+//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+#include		<resource.h>
+//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+#define	ICO_1		0x1000     //ͼ��
+#define	IDB_BACK1	0x1001
+#define	IDB_BACK2	0x1002
+#define IDB_KEY1      	0x1003
+#define IDB_KEY2      	0x1004
+#define IDB_KEY3      	0x1005
+#define IDI_APP    	0x1006
+
+//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+ICO_1	ICON		"1.ico"
+IDB_BACK1	BITMAP		"Back1.bmp"
+IDB_BACK2	BITMAP		"Back2.bmp"
+IDB_KEY1	BITMAP		"key1.bmp"
+IDB_KEY2	BITMAP		"key2.bmp"
+IDB_KEY3	BITMAP		"key3.bmp"
+IDI_APP    	ICON		"1.ico"
+//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+#define	IDM_APP		0x2000	//�˵�
+#define	IDM_HELP	0x2001
+#define	IDM_ABOUT	0x2002
+#define	IDM_CHANGE	0x2003
+#define	IDM_PIANO	0x2004
+#define	IDM_GUITAR	0x2005
+
+
+
+IDM_APP		menu	discardable
+BEGIN
+	 POPUP   "��ɫѡ��(&S)"
+    BEGIN
+        MENUITEM    "����",    IDM_PIANO
+        MENUITEM    "����",    IDM_GUITAR
+       
+    END
+	popup	"����"
+    BEGIN
+		menuitem	"����(&H)",IDM_HELP
+		
+		menuitem	"���ڱ�����(&A)",IDM_ABOUT
+    END
+END
+//*******************************************************************************
+//* ���ڴ���
+//*******************************************************************************/
+#define IDD_ABOUT 0x4000
+
+IDD_ABOUT DIALOG DISCARDABLE 160, 60, 214, 100
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "���ڱ�����"
+FONT 9, "����"
+BEGIN
+    ICON            IDI_APP, IDC_STATIC, 11, 15, 21, 21
+
+    LTEXT           "�й�ũҵ��ѧ - Win32 ���������",
+                    IDC_STATIC, 40, 11, 160, 8
+
+    LTEXT           "just a simple virtual piano...",
+                    IDC_STATIC, 40, 29, 160, 8
+
+    LTEXT           "Have a good time��",
+                    IDC_STATIC, 40, 46, 199, 37
+    LTEXT           "����ˣ���",
+                    IDC_STATIC, 40, 64, 199, 37
+    
+    DEFPUSHBUTTON   "ȷ��(&O)",IDOK,153,231,50,14,WS_GROUP
+END
+
+
+//*******************************************************************************
+//* ��������
+//*******************************************************************************/
+#define IDD_HELP 0x4001
+
+IDD_HELP DIALOG DISCARDABLE 160, 60, 214, 100
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "����"
+FONT 9, "����"
+BEGIN
+    ICON            IDI_APP, IDC_STATIC, 11, 15, 21, 21
+
+    LTEXT           "ʹ��˵��",
+                    IDC_STATIC, 40, 11, 160, 8
+
+    LTEXT           "����ݼ����������Ķ�Ӧͼ����",
+                    IDC_STATIC, 40, 29, 160, 8
+    LTEXT           " ���Դ�����ɫѡ����ѡ����ϲ������ɫ",
+                    IDC_STATIC, 40, 47, 260, 8
+    LTEXT           " ESC���˳�",
+                    IDC_STATIC, 40, 65, 80, 8
+
+END
+
+
+//* �汾��Ϣ
+//*******************************************************************************/
+1 VERSIONINFO
+FILEVERSION 1, 0, 0, 1
+PRODUCTVERSION 1, 0, 0, 1
+FILEOS      0x4
+FILETYPE    0x1
+FILESUBTYPE 0x0
+BEGIN
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x804, 0x4b0
+    END
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "080404b0"
+        BEGIN
+            VALUE "ProductName", "Virtual Piano\0"
+            VALUE "ProductVersion", "1, 0, 0, 1\0"
+            VALUE "CompanyName", "�й�ũҵ��ѧ\0"
+            VALUE "FileDescription", "Win32���������\0"
+            VALUE "FileVersion", "1, 0, 0, 1\0"
+            VALUE "LegalCopyright", "Copyright (c) 2014 �� All Rights Reserved.\0"
+            VALUE "LegalTrademarks", "Virtual Piano\0"
+            VALUE "SpecialBuild", "20140708\0"
+            VALUE "Comments", "Win32���������     < 1210020120 �� >\0"
+        END
+    END
+END
+

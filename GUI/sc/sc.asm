@@ -4,7 +4,6 @@ option casemap:none
 
 include \masm32\include\masm32rt.inc
 include \masm32\include\winmm.inc
-
 includelib \masm32\lib\winmm.lib
 
 ; porcedure pre-statement
@@ -17,13 +16,6 @@ InitMap proto
         ClassName        db           "SimpleWinClass",0   
         ; the title of window      
         AppName          db           "Gluttonous Snake",0    
-        ; for DEBUG       
-        IconErr          db           "Icon Error",0
-        fmt              db           "%d,%d,%d,%d", 0
-        SnM              db           "snakeMsg",0
-        snakeMsg         db           "%d,%d,%d,%d", 0
-        SnCrM            db           "snakeCrashMsg",0
-        snakeCrashMsg    db           "edi=%d,esi=%d,edioc=%d,esioc=%d", 0
         ; GAME text
         GameOverTitle    db           "Game Over",0
         SnakeAchievement db           "Snake Length: %d, Your Score: %d",0
@@ -33,7 +25,6 @@ InitMap proto
         TextAbout        db           "You are right. However, Snake is a classic game that was developed in 1976 at Bell Labs and has become a popular casual game.",0
         TitleControl     db           "HOW TO PLAY",0
         TextControl      db           "Press the SPACE to start/pause the game and use WASD to control the snake's movement.",0
-
         ; output buffer
         szBuffer         db           256 dup(0)
         ; define window size
@@ -43,7 +34,7 @@ InitMap proto
         ICON_WIDTH       equ          32
         ICON_HEIGHT      equ          32
         ; define timer interval
-        TIMER            equ          500
+        TIMER            equ          300
         ; define resource id, conforming to .rc (header) file
         IDI_ICON1        equ          101
         IDI_ICON2        equ          102
@@ -62,7 +53,7 @@ InitMap proto
         ; define music about
         Mp3DeviceID      dd           0
         PlayFlag         dd           0
-        Mp3Device        db           "MPEGVideo",0     ; play .mp3, so use MPEGVideo
+        Mp3Device        db           "MPEGVideo",0     
         MUSIC_TOUSHIGE   db           "toushige.mp3",0
         
         ; orientation meaning:
@@ -75,14 +66,13 @@ InitMap proto
         UP    equ 2
         LEFT  equ 3
         DOWN  equ 4
-
         ; define position in map
         SnakeInfo struct
                 y               byte    5
                 x               byte    4
                 orientation     byte    RIGHT
                 satisfied       byte    0
-                len          dword   4
+                len             dword   4
                 score           dword   0
         SnakeInfo ends
         mySnake SnakeInfo <?>    
@@ -113,15 +103,6 @@ InitMap proto
         snakeCanSwerve  db      1
         foodExist       db      0
         randSeed        DWORD   0
-                
-        ; define block in map, a pity that i don't know how to use struct :C
-        ; GBlock struct
-        ;         mvInX      byte  0
-        ;         mvInY   byte    0
-        ;         mvOutX  byte    0
-        ;         mvOutY  byte    0
-        ;         occupancy   byte    EMPTY
-        ; GBlock ends
 
 ; global data, but Uninitialized
 .DATA?       
@@ -144,13 +125,13 @@ InitMap proto
                   
 .CODE
 start:  
-; get the instance handle of our program.
+        ; get the instance handle of our program.
         invoke GetModuleHandle, NULL
         mov    hInstance,eax
-; get the command line handle. command line is command from menu .etc
+        ; get the command line handle. command line is command from menu .etc
         invoke GetCommandLine
         mov    CommandLine,eax
-; Load resources
+        ; Load resources
         ; Load icon
         invoke LoadIcon, hInstance, IDI_ICON1
         mov    hIcon_green, eax
@@ -172,33 +153,33 @@ start:
         ; Load acceleratormsg
         invoke LoadAccelerators, hInstance, IDA_ACCELERATOR1
         mov    hAccelerator, eax
-; Initialize game map
+        ; Initialize game map
         invoke InitMap
-; call the main function
+        ; call the main function
         invoke WinMain, hInstance,NULL,CommandLine, SW_SHOWDEFAULT
-; quit program. The exit code is returned in eax from WinMain.
+        ; quit program. The exit code is returned in eax from WinMain.
         invoke ExitProcess, eax
 
 ; play music
 PlayMp3File proc hWin:DWORD,NameOfFile:DWORD
-      LOCAL mciOpenParms:MCI_OPEN_PARMS
-      LOCAL mciPlayParms:MCI_PLAY_PARMS
+        LOCAL mciOpenParms:MCI_OPEN_PARMS
+        LOCAL mciPlayParms:MCI_PLAY_PARMS
 
-            mov eax,hWin        
-            mov mciPlayParms.dwCallback,eax
+        mov eax,hWin        
+        mov mciPlayParms.dwCallback,eax
 
-            mov eax, OFFSET Mp3Device
-            mov mciOpenParms.lpstrDeviceType,eax
+        mov eax, OFFSET Mp3Device
+        mov mciOpenParms.lpstrDeviceType,eax
 
-            mov eax,NameOfFile
-            mov mciOpenParms.lpstrElementName,eax
+        mov eax,NameOfFile
+        mov mciOpenParms.lpstrElementName,eax
 
-            invoke mciSendCommand,0,MCI_OPEN, MCI_OPEN_TYPE or MCI_OPEN_ELEMENT,ADDR mciOpenParms
-            mov eax,mciOpenParms.wDeviceID
-            mov Mp3DeviceID,eax
+        invoke mciSendCommand,0,MCI_OPEN, MCI_OPEN_TYPE or MCI_OPEN_ELEMENT,ADDR mciOpenParms
+        mov eax,mciOpenParms.wDeviceID
+        mov Mp3DeviceID,eax
 
-            invoke mciSendCommand,Mp3DeviceID,MCI_PLAY,MCI_NOTIFY,ADDR mciPlayParms
-            ret  
+        invoke mciSendCommand,Mp3DeviceID,MCI_PLAY,MCI_NOTIFY,ADDR mciPlayParms
+        ret  
 PlayMp3File endp
 
 ; With Row and Col, return linear index in gameMap
@@ -222,24 +203,24 @@ InitSnake proc
         mov @birthY,5
         mov @birthLen,4
         movzx ecx,@birthLen
-        createSnake:
-                invoke GetIndex,@birthY,@birthX
-                mov edi,eax
-                ; set ocpy
-                mov mapOcpy[edi],SNAKE
-                ; set movein and moveout
-                mov al,@birthY
-                mov mapOutY[edi],al
-                mov mapInY[edi],al
-                mov al,@birthX
-                push ax
-                inc al
-                mov mapOutX[edi],al
-                pop ax
-                dec al
-                mov mapInX[edi],al
-                inc @birthX
-                loop createSnake
+createSnake:
+        invoke GetIndex,@birthY,@birthX
+        mov edi,eax
+        ; set ocpy
+        mov mapOcpy[edi],SNAKE
+        ; set movein and moveout
+        mov al,@birthY
+        mov mapOutY[edi],al
+        mov mapInY[edi],al
+        mov al,@birthX
+        push ax
+        inc al
+        mov mapOutX[edi],al
+        pop ax
+        dec al
+        mov mapInX[edi],al
+        inc @birthX
+        loop createSnake
 
         mov mySnake.x,4
         mov mySnake.y,5
@@ -251,28 +232,6 @@ InitSnake proc
         mov mapOcpy[edi],SNAKE_HEAD
         ret
 InitSnake endp
-
-; untested random number generator
-xorshift128plus PROC s:DWORD
-        mov     eax, dword ptr [s]                      ; 0000 _ 48: 8B. 05, 00000000(rel)
-        mov     edx, dword ptr [s+8H]                   ; 0007 _ 48: 8B. 15, 00000008(rel)
-        mov     dword ptr [s], edx                      ; 000E _ 48: 89. 15, 00000000(rel)
-        mov     ecx, eax                                ; 0015 _ 48: 89. C1
-        shl     ecx, 23                                 ; 0018 _ 48: C1. E1, 17
-        xor     eax, ecx                                ; 001C _ 48: 31. C8
-        mov     ecx, eax                                ; 001F _ 48: 89. C1
-        xor     ecx, edx                                ; 0022 _ 48: 31. D1
-        shr     eax, 17                                 ; 0025 _ 48: C1. E8, 11
-        xor     ecx, eax                                ; 0029 _ 48: 31. C1
-        mov     eax, edx                                ; 002C _ 48: 89. D0
-        shr     eax, 26                                 ; 002F _ 48: C1. E8, 1A
-        xor     ecx, eax                                ; 0033 _ 48: 31. C1
-        mov     dword ptr [s+8H], ecx                   ; 0036 _ 48: 89. 0D, 00000008(rel)
-        mov     eax, dword ptr [s+8H]                   ; 003D _ 48: 8B. 05, 00000008(rel)
-        add     eax, edx                                ; 0044 _ 48: 01. D0
-        
-        ret                                             ; 0047 _ C3
-xorshift128plus ENDP
 
 ; generate random number
 generate_random_number PROC range:DWORD
@@ -313,68 +272,68 @@ InitMap proc
         mov @x,0
         mov @y,0
 
-        for_row:
-                cmp @y,MAXROW
-                jz snakeBirth
-                mov @x,0
-        for_col:
-                cmp @x,MAXCOL
-                jz nextRow
-        setBlock:
-                invoke GetIndex,@y,@x
-                mov edi,eax
+for_row:
+        cmp @y,MAXROW
+        jz snakeBirth
+        mov @x,0
+for_col:
+        cmp @x,MAXCOL
+        jz nextRow
+setBlock:
+        invoke GetIndex,@y,@x
+        mov edi,eax
         ; Initialize current block 
-                ; set Wall
-                .if(@y==0||@x==0||@y==MAXROW-1||@x==MAXCOL-1)
-                        mov mapOcpy[edi],WALL
-                .else
-                        mov mapOcpy[edi],EMPTY
-                .endif
-                ;set movein and moveout
-                mov al,@y
-                mov mapInY,al
-                mov mapOutY,al
-                mov al,@x
-                mov mapInX,al
-                mov mapOutX,al
-        nextCol:
-                inc @x
-                jmp for_col
-        nextRow:
-                inc @y
-                jmp for_row
-        snakeBirth:
-                push ecx
-                invoke InitSnake
-                pop ecx
-                invoke CreateFood
-                ret
+        ; set Wall
+        .if(@y==0||@x==0||@y==MAXROW-1||@x==MAXCOL-1)
+                mov mapOcpy[edi],WALL
+        .else
+                mov mapOcpy[edi],EMPTY
+        .endif
+        ;set movein and moveout
+        mov al,@y
+        mov mapInY,al
+        mov mapOutY,al
+        mov al,@x
+        mov mapInX,al
+        mov mapOutX,al
+nextCol:
+        inc @x
+        jmp for_col
+nextRow:
+        inc @y
+        jmp for_row
+snakeBirth:
+        push ecx
+        invoke InitSnake
+        pop ecx
+        invoke CreateFood
+        ret
 InitMap endp
 
 WinMain proc hInst:HINSTANCE, hPrevInst:HINSTANCE, CmdLine:LPSTR, CmdShow:DWORD
-                LOCAL  @wc:WNDCLASSEX
-                LOCAL  @msg:MSG
-                LOCAL  @hWnd:HWND
+        LOCAL  @wc:WNDCLASSEX
+        LOCAL  @msg:MSG
+        LOCAL  @hWnd:HWND
         ; define my custom window. fill values in members of @wc
-                mov    @wc.cbSize,SIZEOF WNDCLASSEX
-                mov    @wc.style, CS_HREDRAW or CS_VREDRAW
-                mov    @wc.lpfnWndProc, OFFSET WndProc
-                mov    @wc.cbClsExtra,NULL
-                mov    @wc.cbWndExtra,NULL
-                push   hInstance
-                pop    @wc.hInstance
-                mov    @wc.hbrBackground,COLOR_WINDOW+1
-                mov    @wc.lpszMenuName,IDM_MENU1
-                mov    @wc.lpszClassName,OFFSET ClassName
-                invoke LoadIcon,NULL,IDI_APPLICATION
-                mov    @wc.hIcon,eax
-                mov    @wc.hIconSm,eax
-                invoke LoadCursor,NULL,IDC_ARROW
-                mov    @wc.hCursor,eax
+        mov    @wc.cbSize,SIZEOF WNDCLASSEX
+        mov    @wc.style, CS_HREDRAW or CS_VREDRAW
+        mov    @wc.lpfnWndProc, OFFSET WndProc
+        mov    @wc.cbClsExtra,NULL
+        mov    @wc.cbWndExtra,NULL
+        push   hInstance
+        pop    @wc.hInstance
+        mov    @wc.hbrBackground,COLOR_WINDOW+1
+        mov    @wc.lpszMenuName,IDM_MENU1
+        mov    @wc.lpszClassName,OFFSET ClassName
+        invoke LoadIcon,NULL,IDI_APPLICATION
+        mov    @wc.hIcon,eax
+        mov    @wc.hIconSm,eax
+        invoke LoadCursor,NULL,IDC_ARROW
+        mov    @wc.hCursor,eax
         ; register custom window
-                invoke RegisterClassEx, addr @wc
+        invoke RegisterClassEx, addr @wc
         ; create custom window with 12 param
-                invoke CreateWindowEx,NULL,\
+        invoke CreateWindowEx,NULL,\
 ADDR   ClassName,\
 ADDR   AppName,\
 WS_OVERLAPPEDWINDOW,\
@@ -387,13 +346,13 @@ NULL,\
 hInst,\
 NULL
         ; get window handle
-                mov    @hWnd,eax
+        mov    @hWnd,eax
         ; display window on desktop
-                invoke ShowWindow, @hWnd, CmdShow
+        invoke ShowWindow, @hWnd, CmdShow
         ; refresh the client area, (send PAINT message). just a demonstration, actually unnecessary
-                invoke UpdateWindow, @hWnd
+        invoke UpdateWindow, @hWnd
         ; set TIMER to send timing signal
-                invoke SetTimer, @hWnd, NULL, TIMER, NULL
+        invoke SetTimer, @hWnd, NULL, TIMER, NULL
         ; Enter message loop
         .WHILE TRUE
                 invoke GetMessage, ADDR @msg,NULL,0,0
@@ -405,74 +364,74 @@ NULL
                 .endif
         .ENDW
         ; if receive WM_destory, end this programme
-                mov           eax,@msg.wParam
-                ret
+        mov eax, @msg.wParam
+        ret
 WinMain endp
 
 ; paint game area
 DrawMap proc hdc:DWORD,hWnd:HWND
-; Define the dimensions of the matrix
-        LOCAL         @curRow:dword
-        LOCAL         @curCol:dword
-        LOCAL         @xp:DWORD
-        LOCAL         @yp:DWORD
-        LOCAL         @temp:byte
-; Initialize variables
-        mov           @curRow, 0
-        mov           @curCol, 0
-        mov           @xp, 0
-        mov           @yp, 0
-        mov           ecx, 0
-        drawrow:
-                mov eax,MAXROW
-                cmp @curRow,eax
-                jz endDrawMap
-                mov @curCol,0
-        drawcol:
-                mov eax,MAXCOL
-                cmp @curCol,MAXCOL
-                jz nextRow
-        drawBlock:
-        ; calculate xp and yp
-                mov ebx,ICON_HEIGHT
-                mov eax,@curRow
-                mul ebx
-                mov @yp,eax
-                mov ebx,ICON_WIDTH
-                mov eax,@curCol
-                mul ebx
-                mov @xp,eax
-        ; get block index 
-                invoke GetIndex,byte ptr @curRow,byte ptr @curCol
-                mov edi,eax
-        ; according to occupancy, draw blocks
-                mov al,mapOcpy[edi]
-                .if (al==WALL)
-                        invoke DrawIcon, hdc, @xp, @yp, hIcon_blue
-                .elseif (al==SNAKE)
-                        invoke DrawIcon, hdc, @xp, @yp, hIcon_green
-                .elseif (al==SNAKE_HEAD)
-                        .if mySnake.orientation==RIGHT
-                                invoke DrawIcon, hdc, @xp, @yp, hIcon_right
-                        .elseif mySnake.orientation==UP
-                                invoke DrawIcon, hdc, @xp, @yp,  hIcon_up
-                        .elseif mySnake.orientation==LEFT
-                                invoke DrawIcon, hdc, @xp, @yp, hIcon_left
-                        .else
-                                invoke DrawIcon, hdc, @xp, @yp, hIcon_down
-                        .endif
-                .elseif (al==FOOD)
-                        invoke DrawIcon, hdc, @xp, @yp, hIcon_orange
+        ; Define the dimensions of the matrix
+        LOCAL @curRow:dword
+        LOCAL @curCol:dword
+        LOCAL @xp:DWORD
+        LOCAL @yp:DWORD
+        LOCAL @temp:byte
+        ; Initialize variables
+        mov @curRow, 0
+        mov @curCol, 0
+        mov @xp, 0
+        mov @yp, 0
+        mov ecx, 0
+drawrow:
+        mov eax,MAXROW
+        cmp @curRow,eax
+        jz endDrawMap
+        mov @curCol,0
+drawcol:
+        mov eax,MAXCOL
+        cmp @curCol,MAXCOL
+        jz nextRow
+drawBlock:
+; calculate xp and yp
+        mov ebx,ICON_HEIGHT
+        mov eax,@curRow
+        mul ebx
+        mov @yp,eax
+        mov ebx,ICON_WIDTH
+        mov eax,@curCol
+        mul ebx
+        mov @xp,eax
+; get block index 
+        invoke GetIndex,byte ptr @curRow,byte ptr @curCol
+        mov edi,eax
+; according to occupancy, draw blocks
+        mov al,mapOcpy[edi]
+        .if (al==WALL)
+                invoke DrawIcon, hdc, @xp, @yp, hIcon_blue
+        .elseif (al==SNAKE)
+                invoke DrawIcon, hdc, @xp, @yp, hIcon_green
+        .elseif (al==SNAKE_HEAD)
+                .if mySnake.orientation==RIGHT
+                        invoke DrawIcon, hdc, @xp, @yp, hIcon_right
+                .elseif mySnake.orientation==UP
+                        invoke DrawIcon, hdc, @xp, @yp,  hIcon_up
+                .elseif mySnake.orientation==LEFT
+                        invoke DrawIcon, hdc, @xp, @yp, hIcon_left
                 .else
+                        invoke DrawIcon, hdc, @xp, @yp, hIcon_down
                 .endif
-        nextCol:
-                inc @curCol
-                jmp drawcol
-        nextRow:
-                inc @curRow
-                jmp drawrow
-        endDrawMap:
-                ret
+        .elseif (al==FOOD)
+                invoke DrawIcon, hdc, @xp, @yp, hIcon_orange
+        .else
+        .endif
+nextCol:
+        inc @curCol
+        jmp drawcol
+nextRow:
+        inc @curRow
+        jmp drawrow
+endDrawMap:
+        ret
 DrawMap endp
 
 UpdateMapData proc hWnd:HWND
@@ -482,11 +441,11 @@ UpdateMapData proc hWnd:HWND
         local @nextX:byte
         local @HY:byte
         local @HX:byte
-; if game stop, skip all 
+        ; if game stop, skip all 
         cmp gameIsRunning,0
         jz endUpdateMapDate
         mov snakeCanSwerve,0
-; get head coordinate
+        ; get head coordinate
         mov ah, mySnake.y
         mov @curY, ah
         mov al, mySnake.x
@@ -498,7 +457,7 @@ getCurIndex:
         ; if current block movein equal to itself coordinate, end update
         mov ah,mapInY[edi]
         mov al,mapInX[edi]
-; Determine whether the block is snakehead or WALL or EMPTY or FOOD, if yes, skip to avoid infinite loop
+        ; if the block is snakehead or WALL or EMPTY or FOOD, skip to avoid infinite loop
         .if(ah==mySnake.y && al==mySnake.x)
                 jmp createFoodOrNot
         .endif
@@ -509,20 +468,20 @@ getCurIndex:
         jz createFoodOrNot
         cmp al,FOOD
         jz createFoodOrNot
-; get next block coordinate
+        ; get next block coordinate
         mov ah,mapOutY[edi]
         mov @nextY,ah
         mov al,mapOutX[edi]
         mov @nextX,al
-; get next block index
+        ; get next block index
         invoke GetIndex, @nextY, @nextX
         mov esi,eax
-; compare ocpy, if crash, game over
+        ; compare ocpy, if crash, game over
         mov dl,mapOcpy[edi]
         mov al,mapOcpy[esi]
         cmp dl,al
         jb crash
-; if food, gain score and become "satisfied" (growing up)
+        ; if food, gain score and become "satisfied" (growing up)
         cmp al,FOOD
         jnz snakeMove
         mov eax,mySnake.score
@@ -556,7 +515,7 @@ updateMySnakePosition:
         mov mySnake.y,ah
         mov al,@nextX
         mov mySnake.x,al
-; set next block moveout according to head orientation
+        ; set next block moveout according to head orientation
         .if (mySnake.orientation==RIGHT)
                 mov ah,mySnake.y
                 mov mapOutY[esi],ah
@@ -653,11 +612,11 @@ HandleKeydown proc uses edi hWnd:HWND, msg:UINT, wParam:WPARAM, lParam:LPARAM, h
                 dec al
                 cmp ah,al
                 jz endHandleKeydown
-        ; change out direction
+                ; change out direction
                 mov mapOutY[edi],al
                 mov al,mySnake.x
                 mov mapOutX[edi],al
-        ; draw snake head
+                ; draw snake head
                 mov mySnake.orientation,UP
                 invoke InvalidateRect, hWnd, NULL, TRUE
         ; key A
@@ -666,7 +625,7 @@ HandleKeydown proc uses edi hWnd:HWND, msg:UINT, wParam:WPARAM, lParam:LPARAM, h
                 jz endHandleKeydown
                 cmp gameIsRunning,0
                 jz endHandleKeydown
-        ; you can not go back
+                ; you can not go back
                 invoke GetIndex,mySnake.y,mySnake.x
                 mov edi,eax
                 mov ah,mapInX[edi]
@@ -674,11 +633,11 @@ HandleKeydown proc uses edi hWnd:HWND, msg:UINT, wParam:WPARAM, lParam:LPARAM, h
                 dec al
                 cmp ah,al
                 jz endHandleKeydown
-        ; change out direction
+                ; change out direction
                 mov mapOutX[edi],al
                 mov al,mySnake.y
                 mov mapOutY[edi],al
-        ; draw snake head
+                ; draw snake head
                 mov mySnake.orientation,LEFT
                 invoke InvalidateRect, hWnd, NULL, TRUE
         ; key S
@@ -687,7 +646,7 @@ HandleKeydown proc uses edi hWnd:HWND, msg:UINT, wParam:WPARAM, lParam:LPARAM, h
                 jz endHandleKeydown
                 cmp gameIsRunning,0
                 jz endHandleKeydown
-        ; you can not go back
+                ; you can not go back
                 invoke GetIndex,mySnake.y,mySnake.x
                 mov edi,eax
                 mov ah,mapInY[edi]
@@ -695,11 +654,11 @@ HandleKeydown proc uses edi hWnd:HWND, msg:UINT, wParam:WPARAM, lParam:LPARAM, h
                 inc al
                 cmp ah,al
                 jz endHandleKeydown
-        ; change out direction
+                ; change out direction
                 mov mapOutY[edi],al
                 mov al,mySnake.x
                 mov mapOutX[edi],al
-        ; draw snake head
+                ; draw snake head
                 mov mySnake.orientation,DOWN
                 invoke InvalidateRect, hWnd, NULL, TRUE
         ; key D
@@ -708,7 +667,7 @@ HandleKeydown proc uses edi hWnd:HWND, msg:UINT, wParam:WPARAM, lParam:LPARAM, h
                 jz endHandleKeydown
                 cmp gameIsRunning,0
                 jz endHandleKeydown
-        ; you can not go back
+                ; you can not go back
                 invoke GetIndex,mySnake.y,mySnake.x
                 mov edi,eax
                 mov ah,mapInX[edi]
@@ -716,11 +675,11 @@ HandleKeydown proc uses edi hWnd:HWND, msg:UINT, wParam:WPARAM, lParam:LPARAM, h
                 inc al
                 cmp ah,al
                 jz endHandleKeydown
-        ; change out direction
+                ; change out direction
                 mov mapOutX[edi],al
                 mov al,mySnake.y
                 mov mapOutY[edi],al
-        ; draw snake head
+                ; draw snake head
                 mov mySnake.orientation,RIGHT
                 invoke InvalidateRect, hWnd, NULL, TRUE
         ; key C
@@ -765,21 +724,12 @@ WndProc proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM
                         invoke PostQuitMessage,NULL
                 .endif
                 
-
         .elseif uMsg == WM_PAINT
                 invoke BeginPaint, hWnd, addr @ps
                 mov           @hdc, eax
-        
-                ;draw red background
-                ; invoke CreateSolidBrush, 0ffh
-                ; mov    @brush, eax
-                ; invoke FillRect, @hdc, addr @ps.rcPaint, @brush
-                ; invoke DeleteObject, @brush
-
-        ; draw text
+                ; draw text
                 invoke GetClientRect, hWnd, addr rect
-        ; Calculate the client area of ​​the window
-                ; invoke AdjustWindowRect, addr rect, WS_OVERLAPPEDWINDOW, FALSE
+                ; Calculate the client area of ​​the window
                 invoke wsprintf, Addr szBuffer, Addr SnakeScore, mySnake.score
                 invoke DrawText, @hdc, addr szBuffer, -1, addr rect, DT_SINGLELINE OR DT_RIGHT OR DT_VCENTER
                 mov eax,rect.top
@@ -790,9 +740,9 @@ WndProc proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM
                 mov eax,rect.top
                 sub eax,30
                 mov rect.top,eax
-        ; repaint game area
+                ; repaint game area
                 invoke DrawMap, @hdc, hWnd
-        ; end paint
+                ; end paint
                 invoke EndPaint, hWnd, addr @ps
         .elseif uMsg == WM_TIMER
                 invoke UpdateMapData, hWnd
@@ -801,12 +751,10 @@ WndProc proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM
                 invoke HandleKeydown, hWnd, uMsg, wParam, lParam, @hdc
         .elseif uMsg == MM_MCINOTIFY
                 invoke PlayMp3File, hWnd, addr MUSIC_TOUSHIGE
-        .elseif uMsg == WM_LBUTTONDOWN
-                ; invoke        MessageBox,hWnd,addr ClassName,0,MB_OK or MB_ICONINFORMATION
         .elseif uMsg==WM_DESTROY
                 invoke        PostQuitMessage,NULL
+        ; Default message processing                                                           
         .ELSE 
-                ; Default message processing                                                           
                 invoke DefWindowProc,hWnd,uMsg,wParam,lParam
                 ret
         .ENDIF
@@ -814,13 +762,4 @@ WndProc proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM
         ret
 WndProc endp
 
-
-
 end start 
-; DEBUG
-; push eax
-; movzx ebx,mapOcpy[esi]
-; movzx eax,mapOcpy[edi]
-; Invoke wsprintf, Addr szBuffer, Addr snakeMsg, edi,esi,ebx,eax
-; invoke MessageBox, hWnd, addr szBuffer, addr SnM, MB_OK
-; pop eax
