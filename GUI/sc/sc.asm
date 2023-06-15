@@ -13,48 +13,49 @@ InitMap proto
 ; global initialized data
 .DATA                                                         
         ; the name of window class
-        ClassName        db           "SimpleWinClass",0   
+        ClassName        db "SimpleWinClass",0   
         ; the title of window      
-        AppName          db           "Gluttonous Snake",0    
+        AppName          db "Gluttonous Snake",0    
         ; GAME text
-        GameOverTitle    db           "Game Over",0
-        SnakeAchievement db           "Snake Length: %d, Your Score: %d",0
-        SnakeLength      db           "Snake Length: %d ",0
-        SnakeScore       db           "Score: %d ",0
-        TitleAbout       db           "About",0
-        TextAbout        db           "You are right. However, Snake is a classic game that was developed in 1976 at Bell Labs and has become a popular casual game.",0
-        TitleControl     db           "HOW TO PLAY",0
-        TextControl      db           "Press the SPACE to start/pause the game and use WASD to control the snake's movement.",0
+        GameOverTitle    db "Game Over",0
+        SnakeAchievement db "Snake Length: %d, Your Score: %d",0
+        SnakeLength      db "Snake Length: %d ",0
+        SnakeScore       db "Score: %d ",0
+        TimeInterval     db "Timer Interval: %d",0
+        TitleAbout       db "About",0
+        TextAbout        db "You are right. However, Snake is a classic game that was developed in 1976 at Bell Labs and has become a popular casual game.",0
+        TitleControl     db "HOW TO PLAY",0
+        TextControl      db "Press the SPACE to start/pause the game and use WASD to control the snake's movement.",0
         ; output buffer
-        szBuffer         db           256 dup(0)
+        szBuffer         db 256 dup(0)
         ; define window size
-        WND_WIDTH        equ          800
-        WND_HEIGHT       equ          750
+        WND_WIDTH        equ 800
+        WND_HEIGHT       equ 750
+        ; define main timer ID
+        MAINTIMER        equ 12345
         ; define block size 
-        ICON_WIDTH       equ          32
-        ICON_HEIGHT      equ          32
-        ; define timer interval
-        TIMER            equ          300
+        ICON_WIDTH       equ 32
+        ICON_HEIGHT      equ 32
         ; define resource id, conforming to .rc (header) file
-        IDI_ICON1        equ          101
-        IDI_ICON2        equ          102
-        IDI_ICON3        equ          103
-        IDI_HR           equ          104
-        IDI_HD           equ          105
-        IDI_HL           equ          106
-        IDI_HU           equ          107
-        IDM_MENU1        equ          200
-        IDM_START        equ          211
-        IDM_STOP         equ          212
-        IDM_QUIT         equ          213
-        IDM_CTRL         equ          221
-        IDM_ABOUT        equ          222
-        IDA_ACCELERATOR1 equ          300
+        IDI_ICON1        equ 101
+        IDI_ICON2        equ 102
+        IDI_ICON3        equ 103
+        IDI_HR           equ 104
+        IDI_HD           equ 105
+        IDI_HL           equ 106
+        IDI_HU           equ 107
+        IDM_MENU1        equ 200
+        IDM_START        equ 211
+        IDM_STOP         equ 212
+        IDM_QUIT         equ 213
+        IDM_CTRL         equ 221
+        IDM_ABOUT        equ 222
+        IDA_ACCELERATOR1 equ 300
         ; define music about
-        Mp3DeviceID      dd           0
-        PlayFlag         dd           0
-        Mp3Device        db           "MPEGVideo",0     
-        MUSIC_TOUSHIGE   db           "toushige.mp3",0
+        Mp3DeviceID      dd 0
+        PlayFlag         dd 0
+        Mp3Device        db "MPEGVideo",0     
+        MUSIC_TOUSHIGE   db "toushige.mp3",0
         
         ; orientation meaning:
         ; 0:no orientation
@@ -99,6 +100,9 @@ InitMap proto
         mapOutX  db      400 dup(0)     
         mapOcpy  db      400 dup(0) 
         ; dynamic game data
+        ; timer interval
+        mainFrequency   dd      300
+        FreqVariation   equ     100
         gameIsRunning   db      0
         snakeCanSwerve  db      1
         foodExist       db      0
@@ -162,23 +166,23 @@ start:
 
 ; play music
 PlayMp3File proc hWin:DWORD,NameOfFile:DWORD
-        LOCAL mciOpenParms:MCI_OPEN_PARMS
-        LOCAL mciPlayParms:MCI_PLAY_PARMS
+        LOCAL @mciOpenParms:MCI_OPEN_PARMS
+        LOCAL @mciPlayParms:MCI_PLAY_PARMS
 
         mov eax,hWin        
-        mov mciPlayParms.dwCallback,eax
+        mov @mciPlayParms.dwCallback,eax
 
         mov eax, OFFSET Mp3Device
-        mov mciOpenParms.lpstrDeviceType,eax
+        mov @mciOpenParms.lpstrDeviceType,eax
 
         mov eax,NameOfFile
-        mov mciOpenParms.lpstrElementName,eax
+        mov @mciOpenParms.lpstrElementName,eax
 
-        invoke mciSendCommand,0,MCI_OPEN, MCI_OPEN_TYPE or MCI_OPEN_ELEMENT,ADDR mciOpenParms
-        mov eax,mciOpenParms.wDeviceID
+        invoke mciSendCommand,0,MCI_OPEN, MCI_OPEN_TYPE or MCI_OPEN_ELEMENT,ADDR @mciOpenParms
+        mov eax,@mciOpenParms.wDeviceID
         mov Mp3DeviceID,eax
 
-        invoke mciSendCommand,Mp3DeviceID,MCI_PLAY,MCI_NOTIFY,ADDR mciPlayParms
+        invoke mciSendCommand,Mp3DeviceID,MCI_PLAY,MCI_NOTIFY,ADDR @mciPlayParms
         ret  
 PlayMp3File endp
 
@@ -351,8 +355,8 @@ NULL
         invoke ShowWindow, @hWnd, CmdShow
         ; refresh the client area, (send PAINT message). just a demonstration, actually unnecessary
         invoke UpdateWindow, @hWnd
-        ; set TIMER to send timing signal
-        invoke SetTimer, @hWnd, NULL, TIMER, NULL
+        ; set mainFrequency to send timing signal
+        invoke SetTimer, @hWnd, MAINTIMER, mainFrequency, NULL
         ; Enter message loop
         .WHILE TRUE
                 invoke GetMessage, ADDR @msg,NULL,0,0
@@ -434,6 +438,24 @@ endDrawMap:
         ret
 DrawMap endp
 
+; paint game info
+DrawInfo PROC uses eax hdc:DWORD, rect:RECT
+        invoke wsprintf, Addr szBuffer, Addr SnakeScore, mySnake.score
+        invoke DrawText, hdc, addr szBuffer, -1, addr rect, DT_SINGLELINE OR DT_RIGHT OR DT_TOP
+        mov eax, rect.top
+        add eax,30
+        mov rect.top,eax
+        invoke wsprintf, Addr szBuffer, Addr SnakeLength, mySnake.len
+        invoke DrawText, hdc, addr szBuffer, -1, addr rect, DT_SINGLELINE OR DT_RIGHT OR DT_TOP
+        mov eax, rect.top
+        add eax,30
+        mov rect.top,eax
+        invoke wsprintf, Addr szBuffer, Addr TimeInterval, mainFrequency
+        invoke DrawText, hdc, addr szBuffer, -1, addr rect, DT_WORDBREAK or DT_EDITCONTROL OR DT_RIGHT OR DT_TOP
+        ret
+DrawInfo ENDP
+
+; update game data
 UpdateMapData proc hWnd:HWND
         local @curY:byte
         local @curX:byte
@@ -689,20 +711,36 @@ HandleKeydown proc uses edi hWnd:HWND, msg:UINT, wParam:WPARAM, lParam:LPARAM, h
         .elseif eax == 88
                 mov gameIsRunning,0
         ; key Z
-        .elseif eax == 90
+        .elseif (eax == 90 || eax==VK_ESCAPE)
                 invoke PostQuitMessage,NULL
-        .else 
+        ; key pageup, accelerate snake
+        .elseif (eax == VK_PRIOR)
+                mov edx, mainFrequency
+                sub edx, FreqVariation
+                cmp edx, 100
+                jb endHandleKeydown
+                mov mainFrequency, edx
+                invoke KillTimer, hWnd, MAINTIMER
+                invoke SetTimer, hWnd, MAINTIMER, mainFrequency, NULL
+        ; key pagedown, slow down snake
+        .elseif (eax == VK_NEXT)
+                mov edx, mainFrequency
+                add edx, FreqVariation
+                mov mainFrequency, edx
+                invoke KillTimer, hWnd, MAINTIMER
+                invoke SetTimer, hWnd, MAINTIMER, mainFrequency, NULL
+                 
         .endif
         endHandleKeydown:
                 ret
 HandleKeydown endp
 
+; message process
 WndProc proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM
         local @hdc:dword
         local @brush:dword
         local @ps:PAINTSTRUCT
-        local rect:RECT
-        local rect1:RECT
+        local @rect:RECT
 
         .IF uMsg == WM_COMMAND
                 mov eax, wParam
@@ -726,22 +764,13 @@ WndProc proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM
                 
         .elseif uMsg == WM_PAINT
                 invoke BeginPaint, hWnd, addr @ps
-                mov           @hdc, eax
+                mov @hdc, eax
                 ; draw text
-                invoke GetClientRect, hWnd, addr rect
-                ; Calculate the client area of ​​the window
-                invoke wsprintf, Addr szBuffer, Addr SnakeScore, mySnake.score
-                invoke DrawText, @hdc, addr szBuffer, -1, addr rect, DT_SINGLELINE OR DT_RIGHT OR DT_VCENTER
-                mov eax,rect.top
-                add eax,30
-                mov rect.top,eax
-                invoke wsprintf, Addr szBuffer, Addr SnakeLength, mySnake.len
-                invoke DrawText, @hdc, addr szBuffer, -1, addr rect, DT_SINGLELINE OR DT_RIGHT OR DT_VCENTER
-                mov eax,rect.top
-                sub eax,30
-                mov rect.top,eax
+                invoke GetClientRect, hWnd, addr @rect
                 ; repaint game area
                 invoke DrawMap, @hdc, hWnd
+                ; repaint game info
+                invoke DrawInfo, @hdc, @rect
                 ; end paint
                 invoke EndPaint, hWnd, addr @ps
         .elseif uMsg == WM_TIMER
