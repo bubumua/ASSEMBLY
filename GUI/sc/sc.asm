@@ -13,7 +13,7 @@ InitMap proto
 ; global initialized data
 .DATA                                                         
         ; the name of window class
-        ClassName        db "SimpleWinClass",0   
+        ClassName        db "SimpleWinClass",0            
         ; the title of window      
         AppName          db "Gluttonous Snake",0    
         ; GAME text
@@ -188,7 +188,6 @@ PlayMp3File endp
 
 ; With Row and Col, return linear index in gameMap
 GetIndex proc uses edi row:byte, col:byte
-; calculate block offset in ebx
         movzx edi,row
         mov eax,MAXCOL
         mul edi
